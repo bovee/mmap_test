@@ -1,0 +1,11 @@
+[package]
+name = "mmap_test"
+version = "0.1.0"
+authors = ["Roderick Bovee <roderick@onecodex.com>"]
+
+[dependencies]
+memmap = "0.6.2"
+rand = "0.4"
+
+[profile.release]
+debug = true
