@@ -8,4 +8,4 @@ license       = "MIT"
 # Dependencies
 
 requires "nim >= 0.17.2"
-
+requires "bitarray 0.5.0"

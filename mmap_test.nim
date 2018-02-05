@@ -2,26 +2,15 @@ import os
 import memfiles
 import strutils
 
-
-type
-  FlexArray {.unchecked.} = array[0..0, uint8]
-  Test* = object
-    mmap: ptr FlexArray
-    size: uint
-
-proc newTest(filename: string): Test =
-  var mmap: MemFile = open(filename, mode = fmRead, mappedSize = -1)
-  var size = uint(mmap.size)
-  var mmap_mem = cast[ptr FlexArray](mmap.mem)
-
-  return Test(mmap: mmap_mem, size: size)
+import bitarray
 
 
-proc get(self: Test, loc: uint): uint64 =
-  var bounded_loc = loc mod self.size
-  var end_byte = self.mmap[bounded_loc]
-  var v  = uint64(end_byte)
-  return v shr (7.uint - ((bounded_loc - 1) and 7))
+proc get(self: var Bitarray, loc: uint): uint64 =
+  let lower = int((loc mod uint(self.size_bits)) - 64)
+  let upper = lower + 64
+  let slice = self[lower..upper]
+  var v  = uint64(slice)
+  return v shr (7.uint - ((lower - 1) and 7))
 
 
 proc nextRandom(n: uint): uint =
@@ -35,7 +24,7 @@ proc nextRandom(n: uint): uint =
 var filename = paramStr(1)
 var n_samples = parseInt(paramStr(2))
 
-var test = newTest(filename)
+var test = createBitarray(filename, enforceHeader=false)
 var r = 0.uint64
 var i = 1.uint
 
