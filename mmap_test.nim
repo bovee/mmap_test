@@ -6,11 +6,10 @@ import bitarray
 
 
 proc get(self: var Bitarray, loc: uint): uint64 =
-  let lower = int((loc mod uint(self.size_bits)) - 64)
+  let lower = int((loc mod uint(self.size_bits - 64)))
   let upper = lower + 64
   let slice = self[lower..upper]
-  var v  = uint64(slice)
-  return v shr (7.uint - ((lower - 1) and 7))
+  return uint64(slice)
 
 
 proc nextRandom(n: uint): uint =
