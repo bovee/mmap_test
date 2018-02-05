@@ -4,14 +4,15 @@ import strutils
 
 
 type
+  FlexArray {.unchecked.} = array[0..0, uint8]
   Test* = object
-    mmap: ptr array[0..0, uint8]
+    mmap: ptr FlexArray
     size: uint
 
 proc newTest(filename: string): Test =
   var mmap: MemFile = open(filename, mode = fmRead, mappedSize = -1)
-  var mmap_mem = cast[ptr array[0..0, uint8]](mmap.mem)
   var size = uint(mmap.size)
+  var mmap_mem = cast[ptr FlexArray](mmap.mem)
 
   return Test(mmap: mmap_mem, size: size)
 
@@ -38,7 +39,7 @@ var test = newTest(filename)
 var r = 0.uint64
 var i = 1.uint
 
-for _ in 0..n_samples:
+for _ in 0..<n_samples:
   r += test.get(i)
   i = nextRandom(i)
 

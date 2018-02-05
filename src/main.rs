@@ -27,15 +27,15 @@ impl Test {
     }
 
     #[inline(never)]
-    pub fn get(&self, l: usize) -> u64 {
-        let loc = l % self.size;
+    pub fn get(&self, loc: usize) -> u64 {
+        let bounded_loc = loc % self.size;
 
         let ptr: *const u8 = self.mmap.as_ptr();
         let end_byte = unsafe {
-            u64::from(*ptr.offset(loc as isize))
+            u64::from(*ptr.offset(bounded_loc as isize))
         };
-        let mut v = u64::from(end);
-        v >>= 7 - ((loc - 1) & 7);
+        let mut v = u64::from(end_byte);
+        v >>= 7 - ((bounded_loc - 1) & 7);
         v
     }
 }
