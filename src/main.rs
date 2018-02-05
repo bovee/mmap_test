@@ -3,9 +3,13 @@ extern crate memmap;
 use std::env::args;
 use std::fs::OpenOptions;
 use std::io;
+use std::mem::transmute;
 use std::path::Path;
 
 use memmap::{MmapOptions, Mmap};
+
+type BitVecSlice = u64;
+const BIT_VEC_SLICE_SIZE: u8 = 64;
 
 
 struct Test {
@@ -27,16 +31,43 @@ impl Test {
     }
 
     #[inline(never)]
-    pub fn get(&self, loc: usize) -> u64 {
-        let bounded_loc = loc % self.size;
+    fn get_range(&self, loc: usize) -> BitVecSlice {
+        let l = loc % (self.size - 64);
+
+        let byte_idx_st = (l >> 3) as usize;
+        let byte_idx_en = ((l + 63) >> 3) as usize;
+        let new_size: u8 = 64 as u8;
 
         let ptr: *const u8 = self.mmap.as_ptr();
-        let end_byte = unsafe {
-            u64::from(*ptr.offset(bounded_loc as isize))
+
+        // read the last byte first
+        let end = unsafe {
+            *ptr.offset(byte_idx_en as isize)
         };
-        let mut v = u64::from(end_byte);
-        v >>= 7 - ((bounded_loc - 1) & 7);
-        v
+        // align the end of the data with the end of the u64/u128
+        let mut v = BitVecSlice::from(end);
+        v >>= 7 - ((l + 63) & 7);
+
+        if l < self.size - BIT_VEC_SLICE_SIZE as usize {
+            // really nasty/unsafe, but we're just reading a u64/u128 out instead of doing it
+            // byte-wise --- also does not work with legacy mode!!!
+            unsafe {
+                let lg_ptr: *const BitVecSlice = transmute(ptr.offset(byte_idx_st as isize));
+                v |= (*lg_ptr).to_be() << (l & 7) >> (BIT_VEC_SLICE_SIZE - new_size);
+            }
+        } else {
+            // special case if we can't get a whole u64 out without running outside the buffer
+            let bit_offset = new_size + (l & 7) as u8;
+            for (new_idx, old_idx) in (byte_idx_st..byte_idx_en).enumerate() {
+                unsafe {
+                    v |= BitVecSlice::from(*ptr.offset(old_idx as isize)) <<
+                        (bit_offset - 8u8 * (new_idx as u8 + 1));
+                }
+            }
+        }
+
+        // mask out the high bits in case we copied extra
+        v & (BitVecSlice::max_value() >> (BIT_VEC_SLICE_SIZE - new_size))
     }
 }
 
@@ -59,7 +90,7 @@ fn main() {
     let mut r = 0;
     let mut i = 1;
     for _ in 0..n_samples {
-        r += test.get(i);
+        r += test.get_range(i);
         i = next_random(i);
     }
     println!("{}", r);
