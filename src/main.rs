@@ -90,7 +90,7 @@ fn main() {
     let mut r = 0;
     let mut i = 1;
     for _ in 0..n_samples {
-        r += test.get_range(i);
+        r += test.get_range(i).count_ones();
         i = next_random(i);
     }
     println!("{}", r);
